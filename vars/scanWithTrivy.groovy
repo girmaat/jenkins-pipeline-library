@@ -1,5 +1,5 @@
 // vars/scanWithTrivy.groovy
-import org.yourorg.ci.script.TrivyScanner
+import org.testorg.ci.script.TrivyScanner
 
 /**
  * Jenkins shared library entrypoint

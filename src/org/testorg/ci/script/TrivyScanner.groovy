@@ -1,5 +1,5 @@
-// src/org/yourorg/ci/script/TrivyScanner.groovy
-package org.yourorg.ci.script
+// src/org/testorg/ci/script/TrivyScanner.groovy
+package org.testorg.ci.script
 
 class TrivyScanner implements Serializable {
     def steps
