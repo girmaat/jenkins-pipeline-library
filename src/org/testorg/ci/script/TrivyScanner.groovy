@@ -1,4 +1,3 @@
-// src/org/testorg/ci/script/TrivyScanner.groovy
 package org.testorg.ci.script
 
 class TrivyScanner implements Serializable {
@@ -8,11 +7,14 @@ class TrivyScanner implements Serializable {
         this.steps = steps
     }
 
+    /**
+     * Executes Trivy vulnerability scan and manages report generation/archiving.
+     */
     def runScan(Map config) {
-        String imageName     = config.get('image', 'my-app:latest')
-        boolean failOnVuln   = config.get('failOnVuln', true)
-        boolean archive      = config.get('archiveReport', true)
-        boolean sbom         = config.get('sbom', false)
+        String imageName   = config.get('image', 'my-app:latest')
+        boolean failOnVuln = config.get('failOnVuln', true)
+        boolean archive    = config.get('archiveReport', true)
+        boolean sbom       = config.get('sbom', false)
 
         steps.echo "Starting Trivy Scan..."
         steps.echo " Image: ${imageName}"
@@ -35,33 +37,34 @@ class TrivyScanner implements Serializable {
             steps.sh scanCommand
         } catch (Exception e) {
             scanFailed = true
-            steps.echo "❌ Trivy scan failed: ${e.message}"
-            if (failOnVuln) {
-                steps.echo "🔗 Trivy Report: ${steps.env.BUILD_URL}artifact/trivy-report.html"
-                steps.error("Pipeline aborted due to vulnerabilities in image: ${imageName}")
-            } else {
-                steps.echo "⚠️ Ignored scan failure because 'failOnVuln = false'"
-            }
-        } finally {
-            if (archive) {
-                steps.archiveArtifacts artifacts: 'trivy-report.json', fingerprint: true
-                steps.echo "📦 JSON report archived."
+            steps.echo "Trivy scan failed: ${e.message}"
+        }
 
-                // Generate human-readable HTML report
-                steps.generateTrivyHtmlReport('trivy-report.json', 'trivy-report.html')
-                steps.archiveArtifacts artifacts: 'trivy-report.html', fingerprint: true
+        if (archive) {
+            steps.archiveArtifacts artifacts: 'trivy-report.json', fingerprint: true
+            steps.echo "JSON report archived."
 
-                steps.echo scanFailed ? "🔗 HTML Report (after failure): ${steps.env.BUILD_URL}artifact/trivy-report.html"
-                                    : "✅ Trivy completed. View report: ${steps.env.BUILD_URL}artifact/trivy-report.html"
-            }
+            generateTrivyHtmlReport()
 
-            if (sbom) {
-                steps.sh "trivy image --format cyclonedx -o sbom.xml ${imageName}"
-                steps.archiveArtifacts artifacts: 'sbom.xml', fingerprint: true
-                steps.echo "📦 SBOM generated and archived."
+            def reportUrl = "${steps.env.BUILD_URL}artifact/trivy-report.html"
+            steps.echo scanFailed ? "Trivy Report (scan failed): ${reportUrl}" :
+                                    "Trivy completed. View report: ${reportUrl}"
+
+            if (scanFailed && failOnVuln) {
+                steps.error("Pipeline aborted due to Trivy scan failure. See: ${reportUrl}")
             }
         }
+
+        if (sbom) {
+            steps.sh "trivy image --format cyclonedx -o sbom.xml ${imageName}"
+            steps.archiveArtifacts artifacts: 'sbom.xml', fingerprint: true
+            steps.echo "SBOM generated and archived."
+        }
     }
+
+    /**
+     * Converts trivy-report.json to trivy-report.html for easier viewing.
+     */
     def generateTrivyHtmlReport() {
         def htmlGenScript = """
             import json
@@ -71,13 +74,13 @@ class TrivyScanner implements Serializable {
             html_file = Path("trivy-report.html")
 
             if not json_file.exists():
-                print("❌ JSON report missing. Skipping HTML generation.")
+                print("JSON report missing. Skipping HTML generation.")
                 exit(1)
 
             report = json.loads(json_file.read_text())
             html = ["<html><head><title>Trivy Report</title>",
                     "<style>body{font-family:Arial} h2{color:#b30000} .vuln{margin:10px 0;padding:10px;border:1px solid #ccc}</style>",
-                    "</head><body><h1>📊 Trivy Security Report</h1>"]
+                    "</head><body><h1>Trivy Security Report</h1>"]
 
             for r in report.get("Results", []):
                 html.append(f"<h2>{r.get('Target')}</h2>")
