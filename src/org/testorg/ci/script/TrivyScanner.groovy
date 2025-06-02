@@ -26,7 +26,6 @@ class TrivyScanner implements Serializable {
             trivy image \\
             --severity HIGH,CRITICAL \\
             --ignore-unfixed \\
-            --ignore-cve CVE-2024-6345,CVE-2025-47273,CVE-2024-47874 \\
             --format json \\
             --output trivy-report.json \\
             ${failOnVuln ? '--exit-code 1' : '--exit-code 0'} \\
