@@ -1,3 +1,47 @@
+1. README.md
+
+# jenkins-pipeline-library
+
+
+
+2. vars/scanWithTrivy.groovy
+
+// vars/scanWithTrivy.groovy
+import org.testorg.ci.script.TrivyScanner
+
+/**
+ * Jenkins shared library entrypoint
+ * @param config - Map with the following keys:
+ *     image (String)           : Docker image name with tag
+ *     failOnVuln (Boolean)     : Whether to fail pipeline on findings
+ *     archiveReport (Boolean)  : Whether to archive Trivy scan report
+ *     sbom (Boolean)           : Whether to generate SBOM in CycloneDX format
+ */
+def call(Map config = [:]) {
+    def scanner = new TrivyScanner(this) // Injects pipeline DSL steps like `sh`, `echo`, etc.
+    scanner.runScan(config)
+
+    if (config.get('archiveReport', true)) {
+        this.generateTrivyHtmlReport()
+    }
+}
+
+
+
+3. resources/templates/slack.json
+
+{"text": "Slack notification placeholder"}
+
+
+
+4. resources/templates/notify.txt
+
+Build result: SUCCESS/FAILURE
+
+
+
+5. src/org/testorg/ci/script/TrivyScanner.groovy
+
 package org.testorg.ci.script
 
 class TrivyScanner implements Serializable {
@@ -102,3 +146,35 @@ class TrivyScanner implements Serializable {
     }
 
 }
+
+
+
+6. scripts/fix-aws-time-skew.sh
+
+#!/bin/bash
+set -euo pipefail
+
+BLUE='\033[1;34m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${BLUE}🔧 Restarting chronyd...${NC}"
+sudo systemctl restart chronyd
+
+echo -e "${BLUE}⏱️ Forcing immediate time sync with 'chronyc makestep'...${NC}"
+sudo chronyc makestep
+
+echo -e "${BLUE}🔍 Checking new system time drift...${NC}"
+chronyc tracking
+
+echo -e "${BLUE}🔐 Verifying AWS credentials (sts get-caller-identity)...${NC}"
+if aws sts get-caller-identity > /dev/null 2>&1; then
+  echo -e "${GREEN}[✔] AWS credentials are now valid. Time is synced.${NC}"
+else
+  echo -e "${RED}[✘] AWS authentication still failing. Check your credentials or session.${NC}"
+  exit 1
+fi
+
+
+
