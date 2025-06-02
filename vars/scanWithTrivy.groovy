@@ -12,4 +12,8 @@ import org.testorg.ci.script.TrivyScanner
 def call(Map config = [:]) {
     def scanner = new TrivyScanner(this) // Injects pipeline DSL steps like `sh`, `echo`, etc.
     scanner.runScan(config)
+
+    if (config.get('archiveReport', true)) {
+        this.generateTrivyHtmlReport()
+    }
 }
