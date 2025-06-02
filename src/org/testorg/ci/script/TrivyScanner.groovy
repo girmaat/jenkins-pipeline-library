@@ -29,18 +29,13 @@ class TrivyScanner implements Serializable {
             --ignorefile .trivyignore \\
             --format json \\
             --output trivy-report.json \\
-            ${failOnVuln ? '--exit-code 1' : '--exit-code 0'} \\
+            --exit-code 1 \\
             ${imageName}
         """.stripIndent()
 
         boolean scanFailed = false
-
-        try {
-            steps.sh scanCommand
-        } catch (Exception e) {
-            scanFailed = true
-            steps.echo "⚠️ Trivy scan failed (non-blocking): ${e.message}"
-        }
+        int result = steps.sh(script: scanCommand, returnStatus: true)
+        scanFailed = (result != 0)
 
         if (archive) {
             steps.archiveArtifacts artifacts: 'trivy-report.json', fingerprint: true
@@ -49,13 +44,13 @@ class TrivyScanner implements Serializable {
             try {
                 generateTrivyHtmlReport()
                 def reportUrl = "${steps.env.BUILD_URL}artifact/trivy-report.html"
-                steps.echo scanFailed ? "⚠️ Trivy scan failed. See: ${reportUrl}" :
-                                        "✅ Trivy completed. View report: ${reportUrl}"
+                steps.echo scanFailed
+                    ? "⚠️ Trivy scan found issues. Skipped blocking. Report: ${reportUrl}"
+                    : "✅ Trivy completed. View report: ${reportUrl}"
             } catch (Exception e) {
                 steps.echo "⚠️ Failed to generate HTML report: ${e.message}"
             }
 
-            // Gracefully continue if failOnVuln is false
             if (scanFailed && failOnVuln) {
                 steps.error("⛔ Pipeline aborted due to Trivy scan failure.")
             } else if (scanFailed && !failOnVuln) {
