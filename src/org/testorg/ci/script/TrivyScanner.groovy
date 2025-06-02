@@ -74,13 +74,13 @@ class TrivyScanner implements Serializable {
     html_file = Path("trivy-report.html")
 
     if not json_file.exists():
-        print("❌ JSON report missing. Skipping HTML generation.")
+        print("JSON report missing. Skipping HTML generation.")
         exit(1)
 
     report = json.loads(json_file.read_text())
     html = ["<html><head><title>Trivy Report</title>",
             "<style>body{font-family:Arial} h2{color:#b30000} .vuln{margin:10px 0;padding:10px;border:1px solid #ccc}</style>",
-            "</head><body><h1>📊 Trivy Security Report</h1>"]
+            "</head><body><h1>Trivy Security Report</h1>"]
 
     for r in report.get("Results", []):
         html.append(f"<h2>{r.get('Target')}</h2>")
