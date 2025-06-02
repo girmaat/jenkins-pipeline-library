@@ -65,38 +65,39 @@ class TrivyScanner implements Serializable {
     /**
      * Converts trivy-report.json to trivy-report.html for easier viewing.
      */
-    def generateTrivyHtmlReport() {
-        def htmlGenScript = """
-            import json
-            from pathlib import Path
+   def generateTrivyHtmlReport() {
+    def htmlGenScript = '''\
+    import json
+    from pathlib import Path
 
-            json_file = Path("trivy-report.json")
-            html_file = Path("trivy-report.html")
+    json_file = Path("trivy-report.json")
+    html_file = Path("trivy-report.html")
 
-            if not json_file.exists():
-                print("JSON report missing. Skipping HTML generation.")
-                exit(1)
+    if not json_file.exists():
+        print("❌ JSON report missing. Skipping HTML generation.")
+        exit(1)
 
-            report = json.loads(json_file.read_text())
-            html = ["<html><head><title>Trivy Report</title>",
-                    "<style>body{font-family:Arial} h2{color:#b30000} .vuln{margin:10px 0;padding:10px;border:1px solid #ccc}</style>",
-                    "</head><body><h1>Trivy Security Report</h1>"]
+    report = json.loads(json_file.read_text())
+    html = ["<html><head><title>Trivy Report</title>",
+            "<style>body{font-family:Arial} h2{color:#b30000} .vuln{margin:10px 0;padding:10px;border:1px solid #ccc}</style>",
+            "</head><body><h1>📊 Trivy Security Report</h1>"]
 
-            for r in report.get("Results", []):
-                html.append(f"<h2>{r.get('Target')}</h2>")
-                for vuln in r.get("Vulnerabilities", []):
-                    html.append("<div class='vuln'>")
-                    html.append(f"<b>{vuln['VulnerabilityID']}</b> - {vuln['Severity']}<br>")
-                    html.append(f"{vuln.get('Title','')}<br>")
-                    html.append(f"<pre>{vuln.get('Description','')}</pre>")
-                    html.append("</div>")
+    for r in report.get("Results", []):
+        html.append(f"<h2>{r.get('Target')}</h2>")
+        for vuln in r.get("Vulnerabilities", []):
+            html.append("<div class='vuln'>")
+            html.append(f"<b>{vuln['VulnerabilityID']}</b> - {vuln['Severity']}<br>")
+            html.append(f"{vuln.get('Title','')}<br>")
+            html.append(f"<pre>{vuln.get('Description','')}</pre>")
+            html.append("</div>")
 
-            html.append("</body></html>")
-            html_file.write_text('\\n'.join(html))
-        """.stripIndent()
+    html.append("</body></html>")
+    html_file.write_text('\\n'.join(html))
+    '''.stripIndent()
 
         steps.writeFile file: 'gen_trivy_html.py', text: htmlGenScript
         steps.sh 'python3 gen_trivy_html.py'
         steps.archiveArtifacts artifacts: 'trivy-report.html', fingerprint: true
     }
+
 }
